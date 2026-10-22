@@ -6,6 +6,7 @@ TARIF_PLN = {
     "4": {"nama": "R-1/TR 1.300 VA (Non-Subsidi)", "tarif": 1444.70, "va": 1300},
     "5": {"nama": "R-1/TR 2.200 VA (Non-Subsidi)", "tarif": 1444.70, "va": 2200},
     "6": {"nama": "R-2/TR 3.500 VA - 5.500 VA", "tarif": 1699.53, "va": 5500},
+    "7": {"nama": "R-3/TR 6.600 VA ke atas", "tarif": 1699.53, "va": 6600},
 }
 
 # Data Preset Kategori dan Peralatan Listrik yang Diperluas
@@ -59,40 +60,78 @@ KATEGORI_ALAT = {
     }
 }
 
+# Subprogram untuk mengubah angka numerik menjadi format mata uang Rupiah (Rp)
 def format_rupiah(nominal):
-    """Subprogram sederhana untuk memformat angka menjadi format Rupiah"""
     return f"Rp {nominal:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
 
+# Subprogram untuk menampilkan dan memilih golongan tarif listrik PLN (termasuk R-1, R-2, dan R-3)
 def pilih_tarif():
-    """Subprogram untuk memilih golongan tarif listrik PLN"""
     print("\n=== PILIH GOLONGAN TARIF PLN ===")
     for kunci, data in TARIF_PLN.items():
         print(f"[{kunci}] {data['nama']} - Rp {data['tarif']}/kWh (Batas {data['va']} VA)")
     
-    pilihan = input("Pilih nomor tarif (1-6, default 4): ").strip()
+    pilihan = input("Pilih nomor tarif (1-7, default 4): ").strip()
     if pilihan in TARIF_PLN:
         return TARIF_PLN[pilihan]
     else:
         print("Pilihan tidak valid, otomatis memilih R-1/1300 VA.")
         return TARIF_PLN["4"]
 
+# Subprogram untuk menambahkan peralatan listrik, baik dari preset maupun input manual di dalam kategori pilihan
 def tambah_peralatan(daftar_alat):
-    """Subprogram untuk memilih peralatan berdasarkan kategori dan kode alat"""
     print("\n=== PILIH KATEGORI PERALATAN LISTRIK ===")
     for kat_key, kat_val in KATEGORI_ALAT.items():
         print(f"[{kat_key}] {kat_val['nama_kategori']}")
     
     kat_pilihan = input("Pilih nomor kategori (1-4): ").strip()
+
     if kat_pilihan not in KATEGORI_ALAT:
         print("\n[ERROR] Kategori tidak ditemukan.")
         return
 
     kategori_terpilih = KATEGORI_ALAT[kat_pilihan]
-    print(f"\n--- DAFTAR ALAT: {kategori_terpilih['nama_kategori'].upper()} ---")
+    nama_kategori = kategori_terpilih["nama_kategori"]
+    
+    print(f"\n--- DAFTAR ALAT: {nama_kategori.upper()} ---")
     for alat_key, alat_val in kategori_terpilih["alat"].items():
         print(f"[{alat_key}] {alat_val['nama']} (Daya Standar: {alat_val['watt_default']}W)")
+    print("[M] Input Manual Alat Sendiri (Masuk ke Kategori Ini)")
 
-    alat_pilihan = input("Pilih kode alat: ").strip()
+    alat_pilihan = input("Pilih kode alat atau ketik 'M' untuk manual: ").strip().upper()
+
+    # Opsi Input Manual di dalam Kategori Terpilih
+    if alat_pilihan == "M":
+        print(f"\n--- INPUT MANUAL: KATEGORI {nama_kategori.upper()} ---")
+        nama_alat = input("Masukkan nama peralatan listrik: ").strip()
+        if not nama_alat:
+            print("\n[ERROR] Nama peralatan tidak boleh kosong.")
+            return
+        
+        try:
+            volt_input = input("Masukkan Voltase listrik (Volt, default 220V): ").strip()
+            voltase = float(volt_input) if volt_input != "" else 220.0
+            watt = float(input("Masukkan Daya Listrik (Watt): "))
+            jam = float(input("Masukkan lama pemakaian per hari (Jam): "))
+            jumlah = int(input("Masukkan jumlah unit peralatan (default 1): ") or "1")
+
+            if watt > 0 and jam > 0 and jumlah > 0 and voltase > 0:
+                alat = {
+                    "nama": nama_alat,
+                    "kategori": nama_kategori,
+                    "voltase": voltase,
+                    "watt": watt,
+                    "jam": jam,
+                    "jumlah": jumlah
+                }
+                daftar_alat.append(alat)
+                print(f"\n[SUKSES] {nama_alat} ({watt:.0f}W, {voltase:.0f}V) berhasil ditambahkan ke kategori '{nama_kategori}'!")
+            else:
+                print("\n[ERROR] Nilai watt, jam, voltase, dan jumlah harus lebih besar dari 0.")
+        except ValueError:
+            print("\n[ERROR] Input harus berupa angka valid.")
+        return
+
+    # Opsi Memilih Alat dari Preset Kategori
     if alat_pilihan not in kategori_terpilih["alat"]:
         print("\n[ERROR] Kode alat tidak ditemukan.")
         return
@@ -102,9 +141,8 @@ def tambah_peralatan(daftar_alat):
     watt_default = data_preset["watt_default"]
     volt_default = data_preset["volt_default"]
 
-    print(f"\n[TERPILIH] {nama_alat}")
+    print(f"\n[TERPILIH] {nama_alat} ({nama_kategori})")
     try:
-        # Input voltase, watt, jam, dan jumlah unit
         volt_input = input(f"Masukkan Voltase listrik (Volt, default {volt_default}V): ").strip()
         voltase = float(volt_input) if volt_input != "" else float(volt_default)
 
@@ -117,21 +155,21 @@ def tambah_peralatan(daftar_alat):
         if watt > 0 and jam > 0 and jumlah > 0 and voltase > 0:
             alat = {
                 "nama": nama_alat,
-                "kategori": kategori_terpilih["nama_kategori"],
+                "kategori": nama_kategori,
                 "voltase": voltase,
                 "watt": watt,
                 "jam": jam,
                 "jumlah": jumlah
             }
             daftar_alat.append(alat)
-            print(f"\n[SUKSES] {nama_alat} ({watt:.0f}W, {voltase:.0f}V) berhasil ditambahkan!")
+            print(f"\n[SUKSES] {nama_alat} ({watt:.0f}W, {voltase:.0f}V) berhasil ditambahkan ke kategori '{nama_kategori}'!")
         else:
             print("\n[ERROR] Input nilai watt, jam, voltase, dan jumlah harus lebih besar dari 0.")
     except ValueError:
         print("\n[ERROR] Input harus berupa angka valid.")
 
+# Subprogram untuk menganalisis pemakaian energi terbesar beserta kategori dan menghasilkan tips penghematan
 def analisis_penghematan(daftar_alat, total_kwh_bulanan):
-    """Subprogram untuk menganalisis pemakaian tertinggi dan memberikan saran penghematan energi"""
     if not daftar_alat or total_kwh_bulanan == 0:
         return
 
@@ -139,7 +177,7 @@ def analisis_penghematan(daftar_alat, total_kwh_bulanan):
     print("      ANALISIS PENGGUNAAN & SARAN PENGHEMATAN ENERGI   ")
     print("-------------------------------------------------------")
 
-    # Menghitung konsumsi kWh dan persentase setiap alat
+    # Menghitung konsumsi kWh, persentase, dan menyimpan kategori setiap alat
     daftar_analisis = []
     for alat in daftar_alat:
         watt_total = alat["watt"] * alat["jumlah"]
@@ -147,12 +185,13 @@ def analisis_penghematan(daftar_alat, total_kwh_bulanan):
         persen = (kwh_bln / total_kwh_bulanan) * 100.0 if total_kwh_bulanan > 0 else 0
         daftar_analisis.append({
             "nama": alat["nama"],
+            "kategori": alat["kategori"],
             "kwh": kwh_bln,
             "persen": persen,
             "jam": alat["jam"]
         })
 
-    # Mengurutkan alat dari penggunaan kWh tertinggi ke terendah menggunakan algoritma pengurutan sederhana
+    # Mengurutkan alat dari penggunaan kWh tertinggi ke terendah menggunakan perulangan sederhana
     for i in range(len(daftar_analisis)):
         for j in range(i + 1, len(daftar_analisis)):
             if daftar_analisis[i]["kwh"] < daftar_analisis[j]["kwh"]:
@@ -160,7 +199,8 @@ def analisis_penghematan(daftar_alat, total_kwh_bulanan):
 
     print("[ALAT DENGAN KONSUMSI ENERGI TERBESAR]")
     for idx, item in enumerate(daftar_analisis[:3], start=1):
-        print(f" {idx}. {item['nama']}: {item['kwh']:.2f} kWh/bln ({item['persen']:.1f}% dari total tagihan)")
+        print(f" {idx}. {item['nama']} [Kategori: {item['kategori']}]")
+        print(f"    Konsumsi : {item['kwh']:.2f} kWh/bln ({item['persen']:.1f}% dari total tagihan)")
 
     print("\n[REKOMENDASI PENGHEMATAN ENERGI]")
     saran_diberikan = False
@@ -209,8 +249,8 @@ def analisis_penghematan(daftar_alat, total_kwh_bulanan):
         print("• Gunakan stopkontak ber-sakelar untuk memutus total daya alat listrik yang sedang tidak digunakan.")
         print("• Hindari penggunaan peralatan listrik berdaya besar secara bersamaan.")
 
+# Subprogram untuk menghitung estimasi pemakaian kWh, biaya listrik, peringatan overload daya, dan ringkasan
 def tampilkan_ringkasan(daftar_alat, tarif_info, tipe_layanan, biaya_admin):
-    """Subprogram untuk menghitung total biaya tanpa PPJ dan menampilkan ringkasan"""
     print("\n=======================================================")
     print("           RINGKASAN ESTIMASI BIAYA LISTRIK            ")
     print("=======================================================")
@@ -282,8 +322,8 @@ def tampilkan_ringkasan(daftar_alat, tarif_info, tipe_layanan, biaya_admin):
 
     print("=======================================================\n")
 
+# Subprogram utama untuk menjalankan antarmuka menu, perulangan aplikasi, dan navigasi fitur
 def main():
-    """Subprogram utama aplikasi"""
     daftar_alat = []
     tarif_aktif = TARIF_PLN["4"]  # Default: R-1/1300 VA
     tipe_layanan = "Pascabayar"
